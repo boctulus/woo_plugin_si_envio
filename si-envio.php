@@ -20,7 +20,7 @@ define('API_KEY_SIENVIO',  'c58c7960-4d27-4177-8249-ce6df42b3eb8');
 define('SIENVIO_API_BASE_URL', 'http://demo-api.lan/api/v1');
 define('SERVER_ERROR_MSG', 'Falla en el servidor, re-intente más tarde por favor. ');
 define('TODO_OK', 'Procesado exitosamente por SI ENVIO');
-
+define('SHIPPING_METHOD_LABEL', "Si Envia");  // debería ser el nombre de la transportadora *
 
 /**
  * Check if WooCommerce is active
@@ -206,10 +206,13 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 				 * @return void
 				 */
 				public function calculate_shipping( $package = array()) {
-					$rate = array(
-						'label' => "Envio Pancho",
+					/*
+						'label' => SHIPPING_METHOD_LABEL,
 						'cost' => '20',
 						'calc_tax' => 'per_order'
+					*/
+					$rate = array(
+						'label' => SHIPPING_METHOD_LABEL
 					);
 
 					// Register the rate
