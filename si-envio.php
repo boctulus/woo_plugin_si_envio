@@ -17,10 +17,13 @@ require __DIR__ . '/recoleccion.php';
 */
 
 define('API_KEY_SIENVIO',  'c58c7960-4d27-4177-8249-ce6df42b3eb8');
-define('SIENVIO_API_BASE_URL', 'http://demo-api.lan/api/v1');
+define('SIENVIO_API_BASE_URL', 'http://demo-api.lan/api/v1');                         // <-- ajustar
 define('SERVER_ERROR_MSG', 'Falla en el servidor, re-intente más tarde por favor. ');
 define('TODO_OK', 'Procesado exitosamente por SI ENVIO');
 define('SHIPPING_METHOD_LABEL', "Si Envia");  // debería ser el nombre de la transportadora *
+define('STATUS_IF_ERROR', 'processing');
+define('NO_DIM', "Hay productos sin dimensiones");
+
 
 /**
  * Check if WooCommerce is active
@@ -32,9 +35,10 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 		//var_dump($order_id);
 		//var_dump ([$old_status, $new_status]);
 
-		if( $new_status == "completed" ) {
-
-			//debug(API_KEY_SIENVIO, 'API KEY');
+		if( $new_status == "completed" ) 
+		{
+			$alert0x4 = false;
+			$notas = [];
 			
 			$items = [];
 			foreach ($order->get_items() as $item_key => $item ){
@@ -45,9 +49,13 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 				
 				$l = $meta['_length'][0] ?? 0;
 				$w = $meta['_width'][0] ?? 0;
-				$h = $meta['_weight'][0] ?? 0;
+				$h = $meta['_height'][0] ?? 0;
 				$W = $meta['_weight'][0] ?? 0;
-				$cant = $meta['total_sales'][0] ?? 1;
+				$cant =  $item->get_quantity();
+				
+				if ($l == 0 && $w == 0 && $h == 0 && $W == 0){
+					$alert0x4 = true;	
+				}
 				
 				$items['data'][] = [
 					'l' => $l,
@@ -98,6 +106,14 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			
 			//debug($order, 'ORDER OBJECT');
 			
+			if ($alert0x4){
+				$notas[] = NO_DIM;
+				
+				if ($shipping_note == null){
+					$shipping_note = NO_DIM;
+				}
+			}
+			
 			/*
 				Cotizacion
 			*/
@@ -114,46 +130,60 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			];
 			*/
 
-			$cotizacion = getCotizacion($items);
+			$cotizacion_res = getCotizacion($items);
 			
 			//debug($items, 'ITEMS');
 			//debug($cotizacion, 'COTIZACION');
 			//exit; ///////
 			
-			if (empty($cotizacion)){
-				$order->update_status('processing', SERVER_ERROR_MSG . 'Code c001');
+			if (empty($cotizacion_res)){
+				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG . 'Code c001');
 			}
 		
-			$cotizacion = json_decode($cotizacion, true);
+			$cotizacion = json_decode($cotizacion_res, true);
+			
+			//debug(json_encode($items, JSON_PRETTY_PRINT));
+			//debug(json_encode($cotizacion, JSON_PRETTY_PRINT)); exit; ///
 			
 			if (!isset($cotizacion['data']['boxes'])){
-				$order->update_status('processing', SERVER_ERROR_MSG . 'Code c002');
+				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG . 'Code c002');
 				return; //
 			}		
 			
 			$data = [
-						"nombre"  => "$shipping_last_name, $shipping_first_name ",
-						"calle"   => "$shipping_address_1 - $shipping_address_2",
-						"ciudad"  => "$shipping_city, $shipping_country",
-						"notas"   => $shipping_note,
-						"boxes"   => $cotizacion['data']['boxes']				
+						"calle"    => "$shipping_address_1 - $shipping_address_2",
+						"ciudad"   => "$shipping_city, $shipping_country",
+						"notas"    =>  implode(' - ', $notas),
+						"boxes"    => $cotizacion['data']['boxes'],
+						"entregas" => [
+							"nombre"   => "$shipping_last_name, $shipping_first_name ",
+							"email"    => $billing_email,
+							"telefono" => $billing_phone,
+							"notas"    => $shipping_note
+						]
 			];		
 			
 			
 			$recoleccion_res = recoleccion($data);
 			
 			
+			//debug(json_encode($data, JSON_PRETTY_PRINT)); exit; ///
+			
 			if (empty($recoleccion_res)){	
-				$order->update_status('processing', SERVER_ERROR_MSG. 'Code r001');
-				exit; //////
+				debug(json_encode($data, JSON_PRETTY_PRINT)); exit; ///				
+				//$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG. 'Code r001');
+				return; //
 			}
 			
 			$recoleccion = json_decode($recoleccion_res, true);
 			
 			if (!isset($recoleccion['data']['id'])){
-				$order->update_status('processing', SERVER_ERROR_MSG.  'Code r002');
+				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG.  'Code r002');
 				return; //
 			}	
+			
+			
+			$order->update_status('completed', $shipping_note == nulll ? TODO_OK : $shipping_note);
 			
 		}	
 		
