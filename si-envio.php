@@ -71,9 +71,6 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 
 			$timezone = date_default_timezone_get();
 			
-			/*
-				https://stackoverflow.com/questions/22843504/how-can-i-get-customer-details-from-an-order-in-woocommerce
-			*/
 			
 			// Get the Customer billing email
 			$billing_email  = $order->get_billing_email();
@@ -114,27 +111,17 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 				}
 			}
 			
+			
+			$order = new WC_Order($order_id);	
+
+
+			
 			/*
 				Cotizacion
 			*/
 			
-			$order = new WC_Order($order_id);
-			
-			/*
-			$items = [
-				'data' => [
-					[ "w" => 12, "l" => 12, "h" => 12, "W" => 4,  "cant" => 1 ],
-					[ "w" => 10, "l" => 14, "h" => 12, "W" => 0.5, "cant" => 2],
-					[ "w" => 12, "l" => 16, "h" => 16, "W" => 0.5, "cant" => 1]   
-				]                    
-			];
-			*/
-
+		
 			$cotizacion_res = getCotizacion($items);
-			
-			//debug($items, 'ITEMS');
-			//debug($cotizacion, 'COTIZACION');
-			//exit; ///////
 			
 			if (empty($cotizacion_res)){
 				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG . 'Code c001');

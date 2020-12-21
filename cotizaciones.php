@@ -46,7 +46,7 @@ function getCotizacion(Array $data)
 				throw new \Exception("Unexpected http code ($http_code)");
 			}
 		} catch (\Exception $e){
-			return null;
+			return $e->getMessage();
 		}
 
         curl_close($curl);
