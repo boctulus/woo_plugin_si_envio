@@ -9,20 +9,9 @@ Author URI: https://www.sienvio.online/
 */
 
 include __DIR__ . '/debug.php';
+require __DIR__ . '/config.php';
 require __DIR__ . '/cotizaciones.php';
 require __DIR__ . '/recoleccion.php';
-
-/*
-	Settings
-*/
-
-define('API_KEY_SIENVIO',  'c58c7960-4d27-4177-8249-ce6df42b3eb8');
-define('SIENVIO_API_BASE_URL', 'http://demo-api.lan/api/v1');                         // <-- ajustar
-define('SERVER_ERROR_MSG', 'Falla en el servidor, re-intente más tarde por favor. ');
-define('TODO_OK', 'Procesado exitosamente por SI ENVIO');
-define('SHIPPING_METHOD_LABEL', "Si Envia");  // debería ser el nombre de la transportadora *
-define('STATUS_IF_ERROR', 'processing');
-define('NO_DIM', "Hay productos sin dimensiones");
 
 
 /**
@@ -121,10 +110,16 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			*/
 			
 		
-			$cotizacion_res = getCotizacion($items);
-			
-			if (empty($cotizacion_res)){
+			try {
+				$cotizacion_res = getCotizacion($items);
+			} catch (\Exception $e){
 				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG . 'Code c001');
+				return;
+			}
+				
+			if (empty($cotizacion_res)){
+				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG . 'Code c001B');
+				return;
 			}
 		
 			$cotizacion = json_decode($cotizacion_res, true);
@@ -140,7 +135,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			$data = [
 						"calle"    => "$shipping_address_1 - $shipping_address_2",
 						"ciudad"   => "$shipping_city, $shipping_country",
-						"notas"    =>  implode(' - ', $notas),
+						//"notas"    =>  implode(' - ', $notas),
 						"boxes"    => $cotizacion['data']['boxes'],
 						"entregas" => [
 							"nombre"   => "$shipping_last_name, $shipping_first_name ",
@@ -151,14 +146,18 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			];		
 			
 			
-			$recoleccion_res = recoleccion($data);
-			
-			
+			try {
+				$recoleccion_res = recoleccion($data);
+			} catch (\Exception $e){
+				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG . 'Code r001');
+				return;
+			}
+					
 			//debug(json_encode($data, JSON_PRETTY_PRINT)); exit; ///
 			
 			if (empty($recoleccion_res)){	
 				//debug(json_encode($data, JSON_PRETTY_PRINT)); exit; ///				
-				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG. 'Code r001');
+				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG. 'Code r001B');
 				return; //
 			}
 			
@@ -170,7 +169,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			}	
 			
 			
-			$order->update_status('completed', $shipping_note == nulll ? TODO_OK : $shipping_note);
+			$order->update_status('completed', $shipping_note == null ? TODO_OK : $shipping_note);
 			
 		}	
 		

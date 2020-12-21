@@ -24,6 +24,14 @@ function getCotizacion(Array $data)
                 "cache-control: no-cache"
             ),
         ));
+	
+		/*
+			No parece haber solución más sencilla que des-habilitar chequeo de SSL
+			
+			https://cheapsslsecurity.com/blog/ssl-certificate-problem-unable-to-get-local-issuer-certificate/
+		*/
+		curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
+		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
 
         //curl_setopt($curl, CURLOPT_FAILONERROR, true);
 
@@ -36,17 +44,13 @@ function getCotizacion(Array $data)
 	
         $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
-		try {
-			if (curl_errno($curl)) {
-				$error_msg = curl_error($curl);
-				throw new \Exception("$error_msg ($http_code)");
-			}
+		if (curl_errno($curl)) {
+			$error_msg = curl_error($curl);
+			throw new \Exception("$error_msg ($http_code)");
+		}
 
-			if ($http_code >= 300){
-				throw new \Exception("Unexpected http code ($http_code)");
-			}
-		} catch (\Exception $e){
-			return $e->getMessage();
+		if ($http_code >= 300){
+			throw new \Exception("Unexpected http code ($http_code)");
 		}
 
         curl_close($curl);
