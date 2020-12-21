@@ -113,7 +113,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			try {
 				$cotizacion_res = getCotizacion($items);
 			} catch (\Exception $e){
-				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG . 'Code c001');
+				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG . 'Code c001. Technical detail: '. $e->getMessage());
 				return;
 			}
 				
@@ -149,7 +149,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			try {
 				$recoleccion_res = recoleccion($data);
 			} catch (\Exception $e){
-				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG . 'Code r001');
+				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG . 'Code r001. Technical detail: '. $e->getMessage());
 				return;
 			}
 					
