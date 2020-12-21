@@ -170,8 +170,8 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			//debug(json_encode($data, JSON_PRETTY_PRINT)); exit; ///
 			
 			if (empty($recoleccion_res)){	
-				debug(json_encode($data, JSON_PRETTY_PRINT)); exit; ///				
-				//$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG. 'Code r001');
+				//debug(json_encode($data, JSON_PRETTY_PRINT)); exit; ///				
+				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG. 'Code r001');
 				return; //
 			}
 			
@@ -204,11 +204,11 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 				 */
 				public function __construct() {
 					$this->id                 = 'si_envio_shipping_method'; 
-					$this->method_title       = __( 'SiEnvio' );  // Title shown in admin
-					$this->method_description = __( 'Integración con SiEnvio.online' ); // Description shown in admin
+					$this->method_title       = __( 'SiEnvio' ); 
+					$this->method_description = __( 'Integración con SiEnvio.online' ); 
 
-					$this->enabled            = "yes"; // This can be added as an setting but for this example its forced enabled
-					$this->title              = "Si Envio"; // This can be added as an setting but for this example its forced.
+					$this->enabled            = "yes"; 
+					$this->title              = "Si Envio"; 
 
 					$this->init();
 				}
