@@ -2,22 +2,24 @@
 /*
 Plugin Name: Si Envio
 Plugin URI: https://www.sienvio.online/
-Description: integración de SiEnvio con WP
+Description: integración de SiEnvio con WooCommerce
 Version: 1.0.0
-Author: boctulus@sienvio.online
+Author: boctulus@sienvio.online <Pablo>
 Author URI: https://www.sienvio.online/
 */
 
 include __DIR__ . '/debug.php';
-
-global $api_key_sienvio;
-
+require __DIR__ . '/cotizaciones.php';
+require __DIR__ . '/recoleccion.php';
 
 /*
 	Settings
 */
 
-$api_key_sienvio = 'm7aXx04GOe9EePbiVSpWgR3EG6L20F';
+define('API_KEY_SIENVIO',  'c58c7960-4d27-4177-8249-ce6df42b3eb8');
+define('SIENVIO_API_BASE_URL', 'http://demo-api.lan/api/v1');
+define('SERVER_ERROR_MSG', 'Falla en el servidor, re-intente más tarde por favor. ');
+define('TODO_OK', 'Procesado exitosamente por SI ENVIO');
 
 
 /**
@@ -27,27 +29,36 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 
 	function after_place_order($order_id, $old_status, $new_status, $order)
 	{
-		global $api_key_sienvio;
-
-		var_dump($order_id);
-		var_dump ([$old_status, $new_status]);
+		//var_dump($order_id);
+		//var_dump ([$old_status, $new_status]);
 
 		if( $new_status == "completed" ) {
 
-			debug($api_key_sienvio, 'API KEY');
-
+			//debug(API_KEY_SIENVIO, 'API KEY');
+			
+			$items = [];
 			foreach ($order->get_items() as $item_key => $item ){
 				$item_id = $item->get_id();
-				$product_id   = $item->get_product_id(); // the Product id
+				$product_id   = $item->get_product_id(); 
 
 				$meta = get_post_meta($product_id);
 				
-				$l = $meta['_length'] ?? 0;
-				$w = $meta['_width'] ?? 0;
-				$h = $meta['_weight'] ?? 0;
-				$W = $meta['_weight'] ?? 0;
+				$l = $meta['_length'][0] ?? 0;
+				$w = $meta['_width'][0] ?? 0;
+				$h = $meta['_weight'][0] ?? 0;
+				$W = $meta['_weight'][0] ?? 0;
+				$cant = $meta['total_sales'][0] ?? 1;
 				
-				debug([$l, $w, $h, $W], 'Dimmensions');
+				$items['data'][] = [
+					'l' => $l,
+					'w' => $w,
+					'h' => $h,
+					'W' => $W,
+					'cant' => $cant
+				];
+				
+				//debug([$l, $w, $h, $W], 'Dimmensions');
+				//debug($meta, "meta para prod id = $item_id");
 			}
 
 			$timezone = date_default_timezone_get();
@@ -87,27 +98,63 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			
 			//debug($order, 'ORDER OBJECT');
 			
-			$box_id = 6;
+			/*
+				Cotizacion
+			*/
+			
+			$order = new WC_Order($order_id);
+			
+			/*
+			$items = [
+				'data' => [
+					[ "w" => 12, "l" => 12, "h" => 12, "W" => 4,  "cant" => 1 ],
+					[ "w" => 10, "l" => 14, "h" => 12, "W" => 0.5, "cant" => 2],
+					[ "w" => 12, "l" => 16, "h" => 16, "W" => 0.5, "cant" => 1]   
+				]                    
+			];
+			*/
+
+			$cotizacion = getCotizacion($items);
+			
+			//debug($items, 'ITEMS');
+			//debug($cotizacion, 'COTIZACION');
+			//exit; ///////
+			
+			if (empty($cotizacion)){
+				$order->update_status('processing', SERVER_ERROR_MSG . 'Code c001');
+			}
+		
+			$cotizacion = json_decode($cotizacion, true);
+			
+			if (!isset($cotizacion['data']['boxes'])){
+				$order->update_status('processing', SERVER_ERROR_MSG . 'Code c002');
+				return; //
+			}		
 			
 			$data = [
-						"nombre" => "$shipping_last_name, $shipping_first_name ",
-						"calle" =>  "$shipping_address_1 - $shipping_address_2",
-						"ciudad"  => "$shipping_city, $shipping_state, $shipping_country",
-						"notas"  => $shipping_note,
-						"box_id"  => $box_id				
+						"nombre"  => "$shipping_last_name, $shipping_first_name ",
+						"calle"   => "$shipping_address_1 - $shipping_address_2",
+						"ciudad"  => "$shipping_city, $shipping_country",
+						"notas"   => $shipping_note,
+						"boxes"   => $cotizacion['data']['boxes']				
 			];		
 			
-			// simulo fallo en el servidor
-			$ok = false;
 			
-			if (!$ok){
-				debug("Updating order # $order_id");
-				$order = new WC_Order($order_id);				
-				$order->update_status('processing', 'Falla en el servidor');
+			$recoleccion_res = recoleccion($data);
+			
+			
+			if (empty($recoleccion_res)){	
+				$order->update_status('processing', SERVER_ERROR_MSG. 'Code r001');
+				exit; //////
 			}
 			
+			$recoleccion = json_decode($recoleccion_res, true);
 			
-			exit; ///
+			if (!isset($recoleccion['data']['id'])){
+				$order->update_status('processing', SERVER_ERROR_MSG.  'Code r002');
+				return; //
+			}	
+			
 		}	
 		
 		
