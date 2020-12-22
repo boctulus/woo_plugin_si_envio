@@ -27,8 +27,19 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 		if( $new_status == "completed" ) 
 		{
 			$alert0x4 = false;
-			$notas = [];
+			$notas = [];						
+		
+			$order = new WC_Order($order_id);	
+		
+			if(!isset($_SESSION)) {
+     			session_start();
+			}
 			
+			if (time() < $_SESSION['server_not_before']){
+				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG . 'Code g500. Technical detail: waiting for server recovery');
+				return;
+			}
+				
 			$items = [];
 			foreach ($order->get_items() as $item_key => $item ){
 				$item_id = $item->get_id();
@@ -100,11 +111,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 				}
 			}
 			
-			
-			$order = new WC_Order($order_id);	
-
-
-			
+						
 			/*
 				Cotizacion
 			*/
@@ -113,6 +120,8 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			try {
 				$cotizacion_res = getCotizacion($items);
 			} catch (\Exception $e){
+				$_SESSION['server_error_time'] = time();
+				$_SESSION['server_not_before'] = $_SESSION['server_error_time'] + SERVER_TIME_BEFORE_RETRY;
 				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG . 'Code c001. Technical detail: '. $e->getMessage());
 				return;
 			}
@@ -133,9 +142,9 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			}		
 			
 			$data = [
-						"calle"    => "$shipping_address_1 - $shipping_address_2",
+						"calle"    => "$shipping_address_1, $shipping_address_2",
 						"ciudad"   => "$shipping_city, $shipping_country",
-						//"notas"    =>  implode(' - ', $notas),
+						"notas"    =>  implode(' | ', $notas),
 						"boxes"    => $cotizacion['data']['boxes'],
 						"entregas" => [
 							"nombre"   => "$shipping_last_name, $shipping_first_name ",
@@ -149,6 +158,8 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			try {
 				$recoleccion_res = recoleccion($data);
 			} catch (\Exception $e){
+				$_SESSION['server_error_time'] = time();
+				$_SESSION['server_not_before'] = $_SESSION['server_error_time'] + SERVER_TIME_BEFORE_RETRY;
 				$order->update_status(STATUS_IF_ERROR, SERVER_ERROR_MSG . 'Code r001. Technical detail: '. $e->getMessage());
 				return;
 			}

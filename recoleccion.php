@@ -1,22 +1,7 @@
 <?php
 
 function recoleccion(Array $data)
-    {        
-		/*
-        $data = '
-			{
-				"nombre": "Juan Perez",
-				"calle": "calle 58",
-				"ciudad": "La Plata, Buenos Aires, Argentina",
-				"notas": "Prueba completa con versión XXX",
-				"boxes": [
-					{
-						"box_id": 4
-					}
-				]
-			}'
-		*/
-
+    {   
         $curl = curl_init();
 
         $data = json_encode($data);
@@ -26,7 +11,6 @@ function recoleccion(Array $data)
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
@@ -47,27 +31,38 @@ function recoleccion(Array $data)
 		curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
 		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
 	
+		/*
+			Generar excepcion si algo sale mal
+		*/
         //curl_setopt($curl, CURLOPT_FAILONERROR, true);
+	
+		/*
+			TIMEOUT
+		*/
+	
+		// Tell cURL that it should only spend X seconds
+		// trying to connect to the URL in question.
+		curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 2);
+
+		// A given cURL operation should only take
+		// X seconds max.
+		curl_setopt($curl, CURLOPT_TIMEOUT, 5);
 
         $response = curl_exec($curl);
 
         //echo $response;
         
-        $err    = curl_error($curl);
-        $err_no = curl_errno($curl);
-
+        $err_nro = curl_errno($curl);
+        $err_msg = curl_error($curl);	
         $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
-        
-		if (curl_errno($curl)) {
-			$error_msg = curl_error($curl);
-			throw new \Exception("$error_msg ($http_code)");
+		if ($err_nro) {
+			throw new \Exception("$err_msg ($http_code)");
 		}
 
 		if ($http_code >= 300){
 			throw new \Exception("Unexpected http code ($http_code)");
 		}
-
 
         curl_close($curl);     
 	
