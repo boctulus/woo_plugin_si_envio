@@ -62,7 +62,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 					'w' => $w,
 					'h' => $h,
 					'W' => $W,
-					'cant' => $cant
+					'qty' => $cant
 				];
 				
 				//debug([$l, $w, $h, $W], 'Dimmensions');
